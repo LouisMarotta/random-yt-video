@@ -1,4 +1,5 @@
 from random import choice
+from diskcache import Cache
 import webbrowser
 import argparse
 import feedparser
@@ -9,16 +10,22 @@ def main(channel_name: str):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
     }
-    response = requests.get(f'https://inv.thepixora.com/api/v1/search?q=@{channel_name}&type=channel', headers=headers);
-    channels_info = response.json()
 
-    if len(channels_info) <= 0:
-        raise Exception("Channel not found")
+    with Cache('.cache') as cache:
+        author = cache.get(channel_name)
+        if not author:
+            response = requests.get(f'https://inv.thepixora.com/api/v1/search?q=@{channel_name}&type=channel', headers=headers);
+            channels_info = response.json()
 
-    channel_info = channels_info[0]
+            if len(channels_info) <= 0:
+                raise Exception("Channel not found")
 
-    if channel_info['authorId']:
-        url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_info['authorId']}"
+            channel_info = channels_info[0]
+            author = channel_info['authorId'];
+            cache.set(channel_name, author)
+
+    if author:
+        url = f"https://www.youtube.com/feeds/videos.xml?channel_id={author}"
     else:
         raise Exception("Channel not found")
     
